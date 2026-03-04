@@ -121,7 +121,7 @@ async function getPostBySlug(req, res) {
 // POST /api/admin/posts — Cria novo post
 async function createPost(req, res) {
   try {
-    const { title, content, excerpt, cover_image_url, status, tags } = req.body;
+    const { title, content, excerpt, cover_image_url, status, tags, metadata } = req.body;
 
     if (!title || !content) {
       return res.status(400).json({
@@ -137,10 +137,10 @@ async function createPost(req, res) {
     const result = await transaction(async (client) => {
       // Insere o post
       const postResult = await client.query(
-        `INSERT INTO posts (title, slug, content, excerpt, cover_image_url, author_id, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO posts (title, slug, content, excerpt, cover_image_url, author_id, status, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id, title, slug, status, created_at`,
-        [title, slug, content, excerpt || null, cover_image_url || null, req.user.id, postStatus]
+        [title, slug, content, excerpt || null, cover_image_url || null, req.user.id, postStatus, metadata ? JSON.stringify(metadata) : '{}']
       );
 
       const post = postResult.rows[0];
@@ -180,7 +180,7 @@ async function createPost(req, res) {
 async function updatePost(req, res) {
   try {
     const { id } = req.params;
-    const { title, content, excerpt, cover_image_url, status, tags } = req.body;
+    const { title, content, excerpt, cover_image_url, status, tags, metadata } = req.body;
 
     // Verifica se o post existe
     const existing = await query('SELECT id FROM posts WHERE id = $1', [id]);
@@ -220,6 +220,11 @@ async function updatePost(req, res) {
       if (status !== undefined && validStatuses.includes(status)) {
         fields.push(`status = $${paramIndex}`);
         values.push(status);
+        paramIndex++;
+      }
+      if (metadata !== undefined) {
+        fields.push(`metadata = $${paramIndex}`);
+        values.push(JSON.stringify(metadata));
         paramIndex++;
       }
 
@@ -326,9 +331,37 @@ async function updatePostStatus(req, res) {
   }
 }
 
+// GET /api/posts/archives — Meses com ao menos 1 post publicado
+async function getArchives(req, res) {
+  try {
+    const result = await query(
+      `SELECT
+        DATE_TRUNC('month', created_at) AS month,
+        COUNT(*) AS total
+       FROM posts
+       WHERE status = 'published'
+       GROUP BY month
+       HAVING COUNT(*) > 0
+       ORDER BY month DESC`
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows.map(row => ({
+        month: row.month,
+        total: parseInt(row.total, 10),
+      })),
+    });
+  } catch (error) {
+    console.error('[POSTS] Erro ao buscar archives:', error.message);
+    return res.status(500).json({ error: 'SERVER_ERROR', message: 'Erro interno.' });
+  }
+}
+
 module.exports = {
   listPublishedPosts,
   getPostBySlug,
+  getArchives,
   createPost,
   updatePost,
   deletePost,

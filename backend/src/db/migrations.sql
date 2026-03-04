@@ -135,3 +135,8 @@ CREATE TRIGGER trigger_update_posts_updated_at
     BEFORE UPDATE ON posts
     FOR EACH ROW
     EXECUTE FUNCTION update_posts_updated_at();
+
+-- ───────────────────────────────────────────
+-- MIGRATION: coluna metadata em posts
+-- ───────────────────────────────────────────
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';

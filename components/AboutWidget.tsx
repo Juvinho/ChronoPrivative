@@ -27,7 +27,8 @@ export default function AboutWidget({ bio = DEFAULT_BIO, token, onBioUpdate }: A
         throw new Error('Token de autenticação não disponível');
       }
 
-      const response = await fetch('/api/user/bio', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/user/bio`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -76,14 +77,11 @@ export default function AboutWidget({ bio = DEFAULT_BIO, token, onBioUpdate }: A
           <button
             onClick={() => setIsEditModalOpen(true)}
             disabled={isSaving}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[var(--theme-text-secondary)] hover:text-[var(--theme-accent)] border border-transparent hover:border-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/10 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+            className="inline-flex items-center text-[var(--theme-text-secondary)] hover:text-[var(--theme-primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
             title="Editar bio (clique para abrir editor)"
             aria-label="Editar bio"
           >
             <Edit3 className="w-4 h-4 flex-shrink-0 group-hover:rotate-12 transition-transform" />
-            <span className="text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-              EDITAR
-            </span>
           </button>
         </div>
         <p className="text-sm text-[var(--theme-text-secondary)] leading-relaxed">
