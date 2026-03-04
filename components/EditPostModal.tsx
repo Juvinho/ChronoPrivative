@@ -18,7 +18,7 @@ interface EditPostModalProps {
   onSave: (updatedPost: any) => Promise<void>;
 }
 
-const MOOD_OPTIONS = ['happy', 'neutral', 'melancoly', 'stressed'];
+const MOOD_OPTIONS = ['happy', 'neutral', 'melancholy', 'stressed'];
 const WEATHER_OPTIONS = ['sunny', 'cloudy', 'rainy', 'snowy'];
 
 export default function EditPostModal({ post, isOpen, onClose, onSave }: EditPostModalProps) {

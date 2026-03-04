@@ -43,6 +43,22 @@ export function LoginScreen({ onUnlock }: { onUnlock: () => void }) {
       setError(false);
       setAccessGranted(true);
       setBootSequence((prev) => [...prev, "> " + password.replace(/./g, '*'), "ACCESS GRANTED. DECRYPTING DIARY..."]);
+
+      // Obter JWT do backend (best-effort — UI desbloqueia independente)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      fetch(`${apiUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'admin', password: password }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.token) {
+            localStorage.setItem('auth_token', data.token);
+          }
+        })
+        .catch(() => { /* backend indisponível — continua sem token */ });
+
       setTimeout(() => {
         onUnlock();
       }, 1500);

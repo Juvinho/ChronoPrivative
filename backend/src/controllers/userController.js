@@ -87,9 +87,19 @@ async function updateBio(req, res) {
 async function getTopics(req, res) {
   try {
     const result = await pool.query(
-      `SELECT id, name, slug, count 
-       FROM topics 
-       ORDER BY count DESC, name ASC`
+      // TODO D-04: ajustar JOIN após decisão de produto sobre topics × tags
+      // Assumindo post_tags → tags → topics via slug como estrutura provisória
+      `SELECT
+         t.id,
+         t.name,
+         t.slug,
+         COUNT(DISTINCT pt.post_id)::integer AS count
+       FROM topics t
+       LEFT JOIN tags tg ON tg.slug = t.slug
+       LEFT JOIN post_tags pt ON pt.tag_id = tg.id
+       LEFT JOIN posts p ON p.id = pt.post_id AND p.status = 'published'
+       GROUP BY t.id
+       ORDER BY count DESC, t.name ASC`
     );
 
     return res.status(200).json({

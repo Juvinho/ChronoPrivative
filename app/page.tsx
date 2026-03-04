@@ -12,7 +12,11 @@ import { TerminalInput } from "@/components/terminal-input";
 import { TerminalTextarea } from "@/components/terminal-textarea";
 
 import { HighlightText } from "@/components/highlight-text";
-import { usePosts, type Post } from "@/hooks/use-posts";
+import { usePosts, type PostEntry as Post } from "@/hooks/use-posts";
+import AboutWidget from "@/components/AboutWidget";
+import TopicsWidget from "@/components/TopicsWidget";
+import ArchivesWidget from "@/components/ArchivesWidget";
+import EditPostModal from "@/components/EditPostModal";
 
 export default function Home() {
   // Helper function to format time ago
@@ -29,6 +33,8 @@ export default function Home() {
     return `${Math.floor(secondsAgo / 2592000)} months ago`;
   };
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [userBio, setUserBio] = useState<string>("");
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   
@@ -45,6 +51,7 @@ export default function Home() {
   const [hasDraft, setHasDraft] = useState(false);
   const [showMarkdownHelp, setShowMarkdownHelp] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
 
   const contentRef = useRef<HTMLTextAreaElement>(null);
   
@@ -204,14 +211,6 @@ export default function Home() {
     }
   };
 
-  type Post = {
-    id: number;
-    title: string;
-    content: string;
-    tag: string;
-    created_at: string;
-    metadata?: any;
-  };
 
   // Fetch posts from backend
   const { posts: backendPosts, loading, error, refresh } = usePosts();
@@ -221,7 +220,7 @@ export default function Home() {
   // Sync backend posts with local state
   useEffect(() => {
     if (backendPosts.length > 0) {
-      const transformedPosts = backendPosts.map((post: any) => ({
+      const transformedPosts: Post[] = backendPosts.map((post: any) => ({
         id: post.id,
         title: post.title,
         content: post.content,
@@ -274,18 +273,19 @@ export default function Home() {
       const newPost = {
         title: postTitle || "Untitled Entry",
         content: postContent || "No content provided.",
-        tag: postTag,
+        status: 'published',
+        tags: [postTag],
+        cover_image_url: postImage || undefined,
         metadata: {
           mood: postMood,
           weather: postWeather,
           listening: postListening
         },
-        image: postImage || undefined
       };
 
       // Send to backend
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      const response = await fetch('http://localhost:3001/api/posts', {
+      const response = await fetch('http://localhost:4000/api/posts/admin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -329,7 +329,7 @@ export default function Home() {
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
       
       // Delete from backend
-      const response = await fetch(`http://localhost:3001/api/posts/${post.id}`, {
+      const response = await fetch(`http://localhost:4000/api/posts/admin/${post.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -338,7 +338,7 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete post');
+        throw new Error(`Failed to delete post: ${response.status} ${response.statusText}`);
       }
 
       // Update local state
@@ -366,7 +366,7 @@ export default function Home() {
         const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
         
         // Re-create the post in backend
-        const response = await fetch('http://localhost:3001/api/posts', {
+        const response = await fetch('http://localhost:4000/api/posts/admin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -375,14 +375,17 @@ export default function Home() {
           body: JSON.stringify({
             title: deletedPost.post.title,
             content: deletedPost.post.content,
-            tag: deletedPost.post.tag,
+            status: 'published',
+            tags: [deletedPost.post.tag],
             metadata: deletedPost.post.metadata
           })
         });
 
         if (response.ok) {
+          const restored = await response.json(); // { post: { id: novoId, ... } }
+          const restoredPost = { ...deletedPost.post, id: restored.post.id };
           const newPosts = [...posts];
-          newPosts.splice(deletedPost.index, 0, deletedPost.post);
+          newPosts.splice(deletedPost.index, 0, restoredPost);
           setPosts(newPosts);
           setDeletedPost(null);
           if (undoTimer) clearTimeout(undoTimer);
@@ -391,6 +394,38 @@ export default function Home() {
         console.error('Error restoring post:', err);
       }
     }
+  };
+
+  const handleSaveEdit = async (updatedPost: { id: string; title: string; content: string; tags: string[]; mood?: string; weather?: string; musicPlaying?: string }) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const response = await fetch(`${apiUrl}/api/posts/admin/${updatedPost.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: JSON.stringify({
+        title: updatedPost.title,
+        content: updatedPost.content,
+        tags: updatedPost.tags,
+        metadata: {
+          mood: updatedPost.mood,
+          weather: updatedPost.weather,
+          listening: updatedPost.musicPlaying,
+        },
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error((err as { message?: string }).message || `Erro ao editar post: ${response.status}`);
+    }
+
+    const result = await response.json();
+    setPosts(prev =>
+      prev.map(p => (p.id === Number(updatedPost.id) ? { ...p, ...result.post, tag: updatedPost.tags[0] ?? p.tag } : p))
+    );
   };
 
   useEffect(() => {
@@ -479,7 +514,14 @@ export default function Home() {
   }, [focusedIndex, filteredPosts]);
 
   if (!isAuthenticated) {
-    return <LoginScreen onUnlock={() => setIsAuthenticated(true)} />;
+    return (
+      <LoginScreen
+        onUnlock={() => {
+          setIsAuthenticated(true);
+          setAuthToken(localStorage.getItem('auth_token'));
+        }}
+      />
+    );
   }
 
   return (
@@ -1040,6 +1082,13 @@ export default function Home() {
                       >
                         <HighlightText text={post.tag} query={searchQuery} />
                       </button>
+                      <button
+                        onClick={() => setEditingPost(post)}
+                        className="text-[var(--theme-text-secondary)] hover:text-[var(--theme-primary)] transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        title="Edit Entry"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
                       <button 
                         onClick={() => handleDelete(post)}
                         className="text-[var(--theme-text-secondary)] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
@@ -1053,14 +1102,14 @@ export default function Home() {
                     <h4 className="text-lg font-bold">
                       <HighlightText text={post.title} query={searchQuery} />
                     </h4>
-                    {post.hasImage && (
+                    {!!(post as any).imageUrl && (
                       <div className="mb-4">
                         <RetroImagePlaceholder 
-                          src={post.imageUrl} 
-                          text={post.imageText} 
+                          src={(post as any).imageUrl as string} 
+                          text={(post as any).imageText as string | undefined} 
                           altText={`Entry image: ${post.title}`}
                           className="w-full h-48 sm:h-64" 
-                          onClick={() => post.imageUrl && setSelectedImage({ url: post.imageUrl, title: post.imageText || "Untitled" })}
+                          onClick={() => (post as any).imageUrl && setSelectedImage({ url: (post as any).imageUrl, title: (post as any).imageText || "Untitled" })}
                         />
                       </div>
                     )}
@@ -1174,53 +1223,17 @@ export default function Home() {
           )}
 
           {/* About Widget */}
-          <div className="bg-[var(--theme-bg-secondary)] border border-[var(--theme-border-primary)] p-5 rounded-sm">
-            <h3 className="font-bold text-[var(--theme-text-light)] mb-3 flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-[var(--theme-primary)]" />
-              About Me
-            </h3>
-            <p className="text-sm text-[var(--theme-text-secondary)] leading-relaxed">
-              Welcome to my personal diary. This is where I document my life, thoughts, and daily experiences in a retro-styled digital space.
-            </p>
-          </div>
+          <AboutWidget
+            bio={userBio}
+            token={authToken ?? undefined}
+            onBioUpdate={setUserBio}
+          />
 
-          {/* Tags Widget */}
-          <div className="bg-[var(--theme-bg-secondary)] border border-[var(--theme-border-primary)] p-5 rounded-sm">
-            <h3 className="font-bold text-[var(--theme-text-light)] mb-3 flex items-center gap-2">
-              <Lock className="w-4 h-4 text-[var(--theme-primary)]" />
-              Topics
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {["LIFE", "THOUGHTS", "TRAVEL", "MUSIC", "RANDOM"].map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs bg-[var(--theme-bg-tertiary)] border border-[var(--theme-border-primary)] px-2 py-1 rounded text-[var(--theme-text-secondary)] hover:text-[var(--theme-primary)] hover:border-[var(--theme-primary)] cursor-pointer transition-colors"
-                >
-                  ${tag}
-                </span>
-              ))}
-            </div>
-          </div>
+          {/* Topics Widget */}
+          <TopicsWidget />
 
           {/* Archives Widget */}
-          <div className="bg-[var(--theme-bg-secondary)] border border-[var(--theme-border-primary)] p-5 rounded-sm">
-            <h3 className="font-bold text-[var(--theme-text-light)] mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[var(--theme-primary)]" />
-              Archives
-            </h3>
-            <ul className="space-y-2 text-sm">
-              {["October 2023", "September 2023", "August 2023"].map(
-                (month) => (
-                  <li key={month}>
-                    <button className="w-full flex items-center justify-between text-[var(--theme-text-secondary)] hover:text-[var(--theme-primary)] transition-colors group">
-                      <span>{month}</span>
-                      <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  </li>
-                ),
-              )}
-            </ul>
-          </div>
+          <ArchivesWidget />
         </aside>
       </div>
 
@@ -1409,6 +1422,23 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {editingPost && (
+        <EditPostModal
+          post={{
+            id: editingPost.id.toString(),
+            title: editingPost.title,
+            content: editingPost.content,
+            mood: editingPost.metadata?.mood,
+            weather: editingPost.metadata?.weather,
+            musicPlaying: editingPost.metadata?.listening,
+            tags: editingPost.tag ? [editingPost.tag] : [],
+          }}
+          isOpen={true}
+          onClose={() => setEditingPost(null)}
+          onSave={handleSaveEdit}
+        />
+      )}
     </div>
   );
 }
