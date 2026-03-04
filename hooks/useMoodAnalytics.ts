@@ -1,3 +1,11 @@
+/**
+ * @status PRÓXIMA FASE — v2
+ * @decision D-01B (04/03/2026)
+ * @reason Endpoint GET /api/posts/analytics/mood não implementado nesta entrega.
+ *         Aguardando histórico acumulado e decisão formal de v2.
+ * @unblock Quando: decisão formal de v2 + mínimo de 30 dias de dados.
+ * @ticket [link do ticket v2]
+ */
 'use client';
 
 import { useState, useCallback } from 'react';
