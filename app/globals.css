@@ -18,6 +18,7 @@
     --theme-primary: #8A2BE2;
     --theme-primary-rgb: 138, 43, 226;
     --theme-secondary: #9400FF;
+    --theme-accent: #00FF00;
   }
 
   body {
