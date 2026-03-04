@@ -179,9 +179,29 @@ export default function Home() {
           imageText: postImageText,
           timestamp: new Date().toISOString() 
         };
-        localStorage.setItem('chrono_draft', JSON.stringify(draft));
-        setLastSaved(new Date());
-        setHasDraft(true);
+        // M-01: localStorage pode lançar QuotaExceededError com imagens base64 grandes.
+        // Fallback: tenta salvar draft sem imagem antes de desistir silenciosamente.
+        try {
+          localStorage.setItem('chrono_draft', JSON.stringify(draft));
+          setLastSaved(new Date());
+          setHasDraft(true);
+        } catch (storageErr) {
+          if (
+            storageErr instanceof DOMException &&
+            (storageErr.name === 'QuotaExceededError' ||
+              storageErr.name === 'NS_ERROR_DOM_QUOTA_REACHED')
+          ) {
+            console.warn('[AUTO-SAVE] localStorage cheio — tentando salvar sem imagem...');
+            try {
+              const draftSemImagem = { ...draft, image: undefined };
+              localStorage.setItem('chrono_draft', JSON.stringify(draftSemImagem));
+              setLastSaved(new Date());
+              setHasDraft(true);
+            } catch {
+              console.error('[AUTO-SAVE] localStorage cheio mesmo sem imagem — rascunho não salvo.');
+            }
+          }
+        }
       }
     }, 30000); // Auto-save every 30 seconds
 
@@ -1254,7 +1274,7 @@ export default function Home() {
 
       <footer className="mt-auto py-8 border-t border-[var(--theme-border-primary)] flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-[var(--theme-text-secondary)]">
         <div className="flex items-center gap-4">
-          <p>© 2024 CHRONOPRIVATIVE // SECURE LOGGING SYSTEM</p>
+          <p>© {new Date().getFullYear()} CHRONOPRIVATIVE // SECURE LOGGING SYSTEM</p>
           <button 
             onClick={() => setShowShortcuts(true)}
             className="hover:text-[var(--theme-primary)] transition-colors flex items-center gap-1"

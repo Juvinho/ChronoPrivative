@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   listPublishedPosts,
   getPostBySlug,
+  getRandomPost,
   getArchives,
   createPost,
   updatePost,
@@ -15,6 +16,7 @@ const { authMiddleware } = require('../middlewares/authMiddleware');
 // Rotas públicas
 router.get('/', listPublishedPosts);
 router.get('/archives', getArchives);  // deve ficar ANTES de /:slug
+router.get('/random', getRandomPost);  // deve ficar ANTES de /:slug
 router.get('/tag/:slug', getPostsByTag);
 router.get('/:slug', getPostBySlug);
 

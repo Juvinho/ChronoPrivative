@@ -22,7 +22,8 @@ export function useRandomPost() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/posts/random');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/posts/random`);
 
       if (!response.ok) {
         const errorData = await response.json();

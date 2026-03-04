@@ -152,3 +152,16 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT '';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS bio_updated_at TIMESTAMP DEFAULT NOW();
 
 UPDATE users SET bio = 'Escreva sua bio aqui.' WHERE username = 'admin' AND (bio IS NULL OR bio = '');
+
+-- ───────────────────────────────────────────
+-- MIGRATION: A-03 — tabela revoked_tokens (04/03/2026)
+-- Decisão D-03: blacklist persistida em PostgreSQL (sem Redis)
+-- ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+  id         SERIAL PRIMARY KEY,
+  token      TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMP NOT NULL,
+  revoked_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_revoked_tokens_token   ON revoked_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at);

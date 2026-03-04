@@ -354,6 +354,46 @@ async function updatePostStatus(req, res) {
   }
 }
 
+// GET /api/posts/random — Retorna 1 post publicado aleatório
+async function getRandomPost(req, res) {
+  try {
+    const result = await query(
+      `SELECT
+        p.id, p.title, p.slug, p.content, p.excerpt, p.cover_image_url,
+        p.status, p.metadata, p.views, p.created_at, p.updated_at,
+        u.username AS author,
+        COALESCE(
+          json_agg(
+            json_build_object('id', t.id, 'name', t.name, 'slug', t.slug)
+          ) FILTER (WHERE t.id IS NOT NULL), '[]'
+        ) AS tags
+      FROM posts p
+      LEFT JOIN users u ON p.author_id = u.id
+      LEFT JOIN post_tags pt ON p.id = pt.post_id
+      LEFT JOIN tags t ON pt.tag_id = t.id
+      WHERE p.status = 'published'
+      GROUP BY p.id, u.username
+      ORDER BY RANDOM()
+      LIMIT 1`
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: 'NOT_FOUND',
+        message: 'Nenhum post publicado encontrado.',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      post: sanitizePostResponse(result.rows[0]),
+    });
+  } catch (error) {
+    console.error('[POSTS] Erro ao buscar post aleatório:', error.message);
+    return res.status(500).json({ error: 'SERVER_ERROR', message: 'Erro interno.' });
+  }
+}
+
 // GET /api/posts/archives — Meses com ao menos 1 post publicado
 async function getArchives(req, res) {
   try {
@@ -384,6 +424,7 @@ async function getArchives(req, res) {
 module.exports = {
   listPublishedPosts,
   getPostBySlug,
+  getRandomPost,
   getArchives,
   createPost,
   updatePost,

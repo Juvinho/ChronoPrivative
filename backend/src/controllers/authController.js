@@ -72,7 +72,7 @@ async function logout(req, res) {
   try {
     const token = req.token;
     if (token) {
-      blacklistToken(token);
+      await blacklistToken(token);
     }
     return res.status(200).json({
       message: 'LOGGED_OUT',
