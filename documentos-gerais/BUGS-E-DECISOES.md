@@ -206,17 +206,36 @@ CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_
 > Registradas por **Juvinho** · 04/03/2026  
 > Origem: `MISSÃO-EQUIPE.md` · Bloqueios identificados durante Sprint 1
 
-### ❌ D-01 — Busca avançada e mood heatmap estão no escopo desta entrega?
+### ✅ D-01A — Busca avançada (SearchPanel + useSearch) — no escopo desta entrega?
 
 | Campo             | Detalhe |
 |-------------------|---------|
 | **Quem decide**   | Produto |
 | **Reportado por** | Juvinho · 04/03/2026 |
-| **Status**        | ⏳ Aguardando resposta |
-| **Impacto**       | `SearchPanel`, `MoodHeatmap`, `useSearch` e `useMoodAnalytics` permanecem dead code indefinidamente enquanto não houver decisão |
-| **Contexto**      | Os componentes e hooks existem no codebase mas os endpoints backend `GET /api/posts/search` e `GET /api/posts/analytics/mood` não foram implementados. Implementar sem decisão é risco de retrabalho. |
-| **Código afetado**| `components/SearchPanel.tsx`, `components/MoodHeatmap.tsx`, `hooks/useSearch.ts`, `hooks/useMoodAnalytics.ts` |
-| **Nota técnica**  | C-07 também depende de C-04 (coluna `metadata`) estar aplicada no banco. C-04 está em andamento — assim que a migration rodar, C-07 fica desbloqueado tecnicamente, aguardando apenas esta decisão. |
+| **Respondido por**| PO · 04/03/2026 |
+| **Status**        | ✅ Respondida |
+| **Decisão**       | **PRÓXIMA FASE** — manter código, não implementar endpoint nesta entrega |
+| **Motivo**        | O fluxo principal do sistema (escrever e publicar entradas diárias) acabou de ser estabilizado no Sprint 1. Busca avançada é uma funcionalidade de consumo de conteúfo, não de produção — não há volume de posts suficiente no sistema ainda para justificar a prioridade desta entrega. |
+| **Prioridade**    | Baixa — entra no backlog v2 |
+| **Próximo passo** | Criar ticket de backlog v2: `[v2] Implementar GET /api/posts/search com suporte a q, tags, moods, weather, dateFrom, dateTo e integrar SearchPanel` |
+| **Restrição**     | Não remover `SearchPanel.tsx` nem `hooks/useSearch.ts` do código — preservar para v2. Não implementar endpoint sem aprovacao formal desta decisão. |
+| **C-07 desbloqueado?** | **Não** — C-07 é formalmente arquivado nesta entrega. Backend não implementa `/api/posts/search` nem `/api/posts/analytics/mood` até v2. |
+
+---
+
+### ✅ D-01B — Analytics de mood (MoodHeatmap + useMoodAnalytics) — no escopo desta entrega?
+
+| Campo             | Detalhe |
+|-------------------|---------|
+| **Quem decide**   | Produto |
+| **Reportado por** | Juvinho · 04/03/2026 |
+| **Respondido por**| PO · 04/03/2026 |
+| **Status**        | ✅ Respondida |
+| **Decisão**       | **PRÓXIMA FASE** — manter código, não implementar endpoint nesta entrega |
+| **Motivo**        | Analytics de humor são significativos apenas com histórico acumulado de entradas — o sistema nunca teve posts publicados corretamente até o Sprint 1. Implementar a visualização agora produziria um heatmap vazio por semanas. Decisão: deixar os dados acumularem e lançar a feature em v2 com dados reais para validar o valor. |
+| **Prioridade**    | Baixa — entra no backlog v2, após busca avançada |
+| **Próximo passo** | Criar ticket de backlog v2: `[v2] Implementar GET /api/posts/analytics/mood e integrar MoodHeatmap` (depende de C-04 estar aplicado — já está) |
+| **Restrição**     | Não remover `MoodHeatmap.tsx` nem `hooks/useMoodAnalytics.ts` do código. Coluna `metadata` (C-04) já está coletando dados — bloco está ativo sem custo. |
 
 ---
 
@@ -272,8 +291,8 @@ CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_
 
 | ID | Tipo | Bloqueio | Reportado por | Resolvido em |
 |----|------|----------|---------------|--------------|
-| C-07 | Técnico | Depende de D-01 (produto) + C-04 (migration não aplicada) | Juvinho | — |
-| D-01 | Produto | Escopo de busca avançada não definido | Juvinho | — |
+| C-07 | Técnico | Depende de D-01 (produto) + C-04 (migration não aplicada) | Juvinho | ✅ 04/03/2026 — arquivado: D-01A+B FASE PRÓXIMA |
+| D-01 | Produto | Escopo de busca avançada não definido | Juvinho | ✅ 04/03/2026 — D-01A+B: PRÓXIMA FASE (ver acima) |
 | D-02 | Infra | Storage de imagens não definido | Juvinho | ✅ 04/03/2026 — disco local (ver D6) |
 | D-03 | Infra | Redis em produção não confirmado | Juvinho | ✅ 04/03/2026 — PostgreSQL (ver D7) |
 | D-04 | Produto | Relação topics/tags não definida | Juvinho | — |
