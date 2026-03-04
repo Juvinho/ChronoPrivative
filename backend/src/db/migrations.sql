@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS users (
     created_at  TIMESTAMP DEFAULT NOW()
 );
 
+-- Migration: adicionar bio ao users (04/03/2026)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio_updated_at TIMESTAMP DEFAULT NOW();
+
 -- ───────────────────────────────────────────
 -- TABELA: posts
 -- ───────────────────────────────────────────
@@ -140,3 +144,11 @@ CREATE TRIGGER trigger_update_posts_updated_at
 -- MIGRATION: coluna metadata em posts
 -- ───────────────────────────────────────────
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+
+-- ───────────────────────────────────────────
+-- MIGRATION: colunas bio em users
+-- ───────────────────────────────────────────
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio_updated_at TIMESTAMP DEFAULT NOW();
+
+UPDATE users SET bio = 'Escreva sua bio aqui.' WHERE username = 'admin' AND (bio IS NULL OR bio = '');

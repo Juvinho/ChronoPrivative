@@ -2,7 +2,11 @@
 // Pool de Conexões PostgreSQL
 // ═══════════════════════════════════════════
 
+require('dotenv').config();
+
 const { Pool } = require('pg');
+
+
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -18,8 +22,20 @@ pool.on('connect', () => {
 });
 
 pool.on('error', (err) => {
-  console.error('[DB] Erro inesperado no pool:', err.message);
-  process.exit(-1);
+  console.error('[DB] Erro no pool:', err.message);
+  
+  // Erros fatais — encerrando processo
+  if (
+    err.message.includes('password authentication') ||
+    err.message.includes('does not exist') ||
+    err.message.includes('permission denied')
+  ) {
+    console.error('[DB] ❌ Erro fatal — encerrando servidor.');
+    process.exit(-1);
+  }
+  
+  // Erros transitórios — logar e continuar
+  console.error('[DB] ⚠️ Erro transitório — aguardando reconexão.');
 });
 
 // Helper para queries com tratamento de erro

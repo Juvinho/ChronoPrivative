@@ -20,7 +20,7 @@ async function updateBio(req, res) {
     }
 
     const { bio } = req.body;
-    const userId = req.user.id;
+    const userId = req.user?.id;
 
     // Validação de tamanho (redundante, mas fail-safe)
     if (!bio || typeof bio !== 'string') {
