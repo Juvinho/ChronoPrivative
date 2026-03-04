@@ -11,7 +11,7 @@
     "prod:restart": "pm2 restart chronoprivative-backend",
     "prod:logs": "pm2 logs chronoprivative-backend",
     "prod:monit": "pm2 monit",
-    "migrate": "node -e \"const fs=require('fs');const {Pool}=require('pg');require('dotenv').config();const pool=new Pool({connectionString:process.env.DATABASE_URL});const sql=fs.readFileSync('./src/db/migrations.sql','utf8');pool.query(sql).then(()=>{console.log('Migrations executadas com sucesso!');pool.end();}).catch(e=>{console.error('Erro:',e);pool.end();});\"",
+    "migrate": "node scripts/migrate.js",
     "seed": "node -e \"const{Pool}=require('pg');const bcrypt=require('bcrypt');require('dotenv').config();const pool=new Pool({connectionString:process.env.DATABASE_URL});(async()=>{const hash=await bcrypt.hash(process.env.ADMIN_PASSWORD||'admin',12);await pool.query('INSERT INTO users(username,password_hash,role) VALUES($1,$2,$3) ON CONFLICT(username) DO NOTHING',['admin',hash,'admin']);console.log('Seed concluído!');pool.end();})();\""
   },
   "dependencies": {

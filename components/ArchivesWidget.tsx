@@ -1,62 +1,92 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Clock, ChevronRight } from 'lucide-react';
 
+interface ArchiveEntry {
+  month: string; // ISO date string from backend, e.g. "2023-10-01T00:00:00.000Z"
+  total: number;
+}
+
 interface ArchivesWidgetProps {
-  archives?: string[];
+  archives?: ArchiveEntry[];
   onArchiveSelect?: (archive: string) => void;
 }
 
-// Sample data: "October 2023", "September 2023", etc.
-const DEFAULT_ARCHIVES = [
-  'October 2023',
-  'September 2023',
-  'August 2023',
-  'July 2023',
-  'June 2023',
-  'May 2023',
-  'April 2023',
-  'March 2023',
-  'February 2023',
-  'January 2023',
-  'December 2022',
-  'November 2022',
-];
-
 interface ArchiveGroup {
   year: string;
-  months: string[];
+  months: { label: string; isoDate: string }[];
   shouldCollapse: boolean;
 }
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+function formatMonthLabel(isoDate: string): string {
+  const d = new Date(isoDate);
+  return `${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
 export default function ArchivesWidget({
-  archives = DEFAULT_ARCHIVES,
+  archives: propArchives,
   onArchiveSelect,
 }: ArchivesWidgetProps) {
-  // Parse archives into grouped structure
-  const groupedArchives = useMemo((): ArchiveGroup[] => {
-    const groups = new Map<string, string[]>();
+  const [archives, setArchives] = useState<ArchiveEntry[]>(propArchives ?? []);
+  const [loading, setLoading] = useState(!propArchives);
 
-    archives.forEach(archive => {
-      // Format: "October 2023" -> extract year
-      const parts = archive.split(' ');
-      const year = parts[parts.length - 1];
+  useEffect(() => {
+    if (propArchives) {
+      setArchives(propArchives);
+      return;
+    }
 
-      if (!groups.has(year)) {
-        groups.set(year, []);
+    const fetchArchives = async () => {
+      try {
+        setLoading(true);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/api/posts/archives`);
+        if (!response.ok) {
+          console.error(`[ArchivesWidget] Erro HTTP ${response.status} ao carregar archives`);
+          return;
+        }
+        const data = await response.json();
+        setArchives(data.data ?? []);
+      } catch (err) {
+        console.error('[ArchivesWidget] Erro ao carregar archives:', err);
+      } finally {
+        setLoading(false);
       }
-      groups.get(year)!.push(archive);
+    };
+
+    fetchArchives();
+  }, [propArchives]);
+
+  // Parse archives into grouped structure — sort by date descending (BUG 3)
+  const groupedArchives = useMemo((): ArchiveGroup[] => {
+    const groups = new Map<string, { label: string; isoDate: string }[]>();
+
+    // Backend already returns ORDER BY month DESC, but we sort again for safety
+    const sorted = [...archives].sort(
+      (a, b) => new Date(b.month).getTime() - new Date(a.month).getTime()
+    );
+
+    sorted.forEach(entry => {
+      const d = new Date(entry.month);
+      const year = String(d.getUTCFullYear());
+      if (!groups.has(year)) groups.set(year, []);
+      groups.get(year)!.push({ label: formatMonthLabel(entry.month), isoDate: entry.month });
     });
 
-    // Convert to array and determine collapse state
     const result: ArchiveGroup[] = Array.from(groups.entries())
       .map(([year, months]) => ({
         year,
-        months: months.sort(),
+        // months are already date-sorted (newest first within each year)
+        months,
         shouldCollapse: months.length >= 5,
       }))
-      .sort((a, b) => parseInt(b.year) - parseInt(a.year)); // Newest first
+      .sort((a, b) => parseInt(b.year) - parseInt(a.year)); // Newest year first
 
     return result;
   }, [archives]);
@@ -96,6 +126,11 @@ export default function ArchivesWidget({
         Archives
       </h3>
 
+      {loading ? (
+        <div className="text-xs text-[var(--theme-text-secondary)] animate-pulse">
+          Carregando arquivos...
+        </div>
+      ) : (
       <ul className="space-y-2 text-sm">
         {groupedArchives.map(group => {
           const isExpanded = expandedYears.has(group.year);
@@ -128,11 +163,11 @@ export default function ArchivesWidget({
                 <div className="ml-4 mt-1 space-y-1">
                   {group.months.map(month => (
                     <button
-                      key={month}
-                      onClick={() => handleMonthClick(month)}
+                      key={month.isoDate}
+                      onClick={() => handleMonthClick(month.label)}
                       className="w-full text-left flex items-center justify-between text-[var(--theme-text-secondary)] hover:text-[var(--theme-primary)] transition-colors group text-xs"
                     >
-                      <span>{month}</span>
+                      <span>{month.label}</span>
                       <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   ))}
@@ -142,9 +177,10 @@ export default function ArchivesWidget({
           );
         })}
       </ul>
+      )}
 
       {/* Empty State */}
-      {groupedArchives.length === 0 && (
+      {!loading && groupedArchives.length === 0 && (
         <p className="text-xs text-[var(--theme-text-secondary)] italic">
           Nenhum arquivo disponível
         </p>

@@ -12,7 +12,7 @@ const { apiLimiter } = require('./src/middlewares/rateLimiter');
 const { pool } = require('./src/db/pool');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3002;
 
 // ─── MIDDLEWARES GLOBAIS ─────────────────
 
@@ -180,10 +180,12 @@ const startServer = () => {
       console.log(`
   ╔═══════════════════════════════════════════╗
   ║   CHRONOPRIVATIVE BACKEND — ONLINE        ║
-  ║   Porta: ${PORT}                             ║
+  ║   ✅ Porta ativa: ${PORT}                    ║
+  ║   🔗 URL: http://localhost:${PORT}        ║
   ║   Env: ${process.env.NODE_ENV || 'development'}                    ║
   ║   PID: ${process.pid}                             ║
   ║   Health: /api/health                     ║
+  ║   Config: PORT=${process.env.PORT || '(fallback 3002)'}         ║
   ╚═══════════════════════════════════════════╝
       `);
     });

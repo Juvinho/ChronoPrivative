@@ -15,6 +15,9 @@ export interface Post {
   tags?: string[];
   images?: Image[];
   isFavorite?: boolean;
+  imageUrl?: string;
+  imageText?: string;
+  hasImage?: boolean;
 }
 
 /** Image Interface */
@@ -200,7 +203,7 @@ export interface ErrorResponse {
   success: false;
   message: string;
   code: string;
-  details?: record<string, any>;
+  details?: Record<string, any>;
 }
 
 /** Constants */

@@ -40,19 +40,29 @@ export default function TopicsWidget({
     const fetchTopics = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/user/topics');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/api/user/topics`);
         
         if (!response.ok) {
-          throw new Error('Erro ao carregar tópicos');
+          console.error(`Erro HTTP ao carregar tópicos: ${response.status} ${response.statusText}`);
+          const errorMessage = response.status === 404 
+            ? 'Endpoint de tópicos não encontrado (verifique a configuração da API)'
+            : response.status === 401
+            ? 'Não autorizado - faça login novamente'
+            : response.status >= 500
+            ? 'Servidor indisponível - tente novamente em instantes'
+            : 'Erro ao carregar tópicos';
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
         setTopics(data.data || DEFAULT_TOPICS);
         setError(null);
       } catch (err) {
-        console.error('Erro ao carregar tópicos:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido ao carregar tópicos';
+        console.error('Erro ao carregar tópicos:', errorMessage, err);
         setTopics(DEFAULT_TOPICS);
-        setError(err instanceof Error ? err.message : 'Erro desconhecido');
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }

@@ -6,7 +6,7 @@ interface PostMetadata {
   listening?: string;
 }
 
-export interface Post {
+export interface PostEntry {
   id: number;
   title: string;
   content: string;
@@ -22,17 +22,19 @@ export interface Post {
   imageUrl?: string;
   imageText?: string;
   image_url?: string;
+  hasImage?: boolean;
+  time?: string;
 }
 
 interface UsePostsReturn {
-  posts: Post[];
+  posts: PostEntry[];
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
 }
 
 export function usePosts(): UsePostsReturn {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +43,7 @@ export function usePosts(): UsePostsReturn {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('http://localhost:3001/api/posts', {
+      const response = await fetch('http://localhost:4000/api/posts', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
