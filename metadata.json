@@ -1,0 +1,5 @@
+{
+  "name": "ChronoPrivative",
+  "description": "A private blog with a retro terminal aesthetic, featuring keyboard-first navigation, image support, and secure logging.",
+  "requestFramePermissions": []
+}

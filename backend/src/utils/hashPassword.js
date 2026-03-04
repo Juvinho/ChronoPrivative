@@ -1,0 +1,17 @@
+// ═══════════════════════════════════════════
+// Hashing de Senhas com bcrypt
+// ═══════════════════════════════════════════
+
+const bcrypt = require('bcrypt');
+
+const SALT_ROUNDS = 12;
+
+async function hashPassword(plainPassword) {
+  return bcrypt.hash(plainPassword, SALT_ROUNDS);
+}
+
+async function comparePassword(plainPassword, hashedPassword) {
+  return bcrypt.compare(plainPassword, hashedPassword);
+}
+
+module.exports = { hashPassword, comparePassword };

@@ -1,0 +1,25 @@
+const express = require('express');
+const router = express.Router();
+const {
+  listPublishedPosts,
+  getPostBySlug,
+  createPost,
+  updatePost,
+  deletePost,
+  updatePostStatus,
+} = require('../controllers/postController');
+const { getPostsByTag } = require('../controllers/tagController');
+const { authMiddleware } = require('../middlewares/authMiddleware');
+
+// Rotas públicas
+router.get('/', listPublishedPosts);
+router.get('/tag/:slug', getPostsByTag);
+router.get('/:slug', getPostBySlug);
+
+// Rotas protegidas (admin)
+router.post('/admin', authMiddleware, createPost);
+router.put('/admin/:id', authMiddleware, updatePost);
+router.delete('/admin/:id', authMiddleware, deletePost);
+router.patch('/admin/:id/status', authMiddleware, updatePostStatus);
+
+module.exports = router;
