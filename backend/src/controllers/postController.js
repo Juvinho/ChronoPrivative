@@ -35,8 +35,8 @@ async function listPublishedPosts(req, res) {
     // Busca posts com tags
     const postsResult = await query(
       `SELECT 
-        p.id, p.title, p.slug, p.excerpt, p.cover_image_url, 
-        p.views, p.created_at, p.updated_at,
+        p.id, p.title, p.slug, p.content, p.excerpt, p.cover_image_url,
+        p.status, p.metadata, p.views, p.created_at, p.updated_at,
         u.username AS author,
         COALESCE(
           json_agg(
@@ -77,7 +77,7 @@ async function getPostBySlug(req, res) {
     const result = await query(
       `SELECT 
         p.id, p.title, p.slug, p.content, p.excerpt, p.cover_image_url,
-        p.status, p.views, p.created_at, p.updated_at,
+        p.status, p.metadata, p.views, p.created_at, p.updated_at,
         u.username AS author,
         COALESCE(
           json_agg(
