@@ -76,11 +76,14 @@ export default function AboutWidget({ bio = DEFAULT_BIO, token, onBioUpdate }: A
           <button
             onClick={() => setIsEditModalOpen(true)}
             disabled={isSaving}
-            className="p-1.5 text-[var(--theme-text-secondary)] hover:text-[var(--theme-accent)] hover:bg-[var(--theme-primary)]/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Editar bio"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[var(--theme-text-secondary)] hover:text-[var(--theme-accent)] border border-transparent hover:border-[var(--theme-primary)] hover:bg-[var(--theme-primary)]/10 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+            title="Editar bio (clique para abrir editor)"
             aria-label="Editar bio"
           >
-            <Edit3 className="w-4 h-4" />
+            <Edit3 className="w-4 h-4 flex-shrink-0 group-hover:rotate-12 transition-transform" />
+            <span className="text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              EDITAR
+            </span>
           </button>
         </div>
         <p className="text-sm text-[var(--theme-text-secondary)] leading-relaxed">
