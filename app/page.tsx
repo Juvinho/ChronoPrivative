@@ -241,14 +241,16 @@ export default function Home() {
       const transformedPosts: Post[] = backendPosts.map((post: any) => ({
         id: post.id,
         title: post.title,
-        content: post.content,
-        tag: post.tag || 'LIFE',
+        content: post.content || '',
+        excerpt: post.excerpt || '',
+        tag: post.tags?.[0] || post.tag || 'LIFE',
         created_at: post.created_at,
         time: formatTimeAgo(post.created_at),
-        metadata: post.metadata,
-        hasImage: !!post.imageUrl || !!post.image_url,
-        imageUrl: post.imageUrl || post.image_url,
-        imageText: post.imageText || 'Image'
+        metadata: post.metadata || {},
+        status: post.status,
+        hasImage: !!(post.cover_image_url || post.imageUrl || post.image_url),
+        imageUrl: post.cover_image_url || post.imageUrl || post.image_url || null,
+        imageText: (post.cover_image_url || post.imageUrl || post.image_url) ? 'Image' : undefined,
       }));
       setPosts(transformedPosts);
     }

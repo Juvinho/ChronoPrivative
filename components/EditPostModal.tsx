@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Save, AlertCircle } from 'lucide-react';
 
 interface EditPostModalProps {
@@ -23,13 +23,27 @@ const WEATHER_OPTIONS = ['sunny', 'cloudy', 'rainy', 'snowy'];
 
 export default function EditPostModal({ post, isOpen, onClose, onSave }: EditPostModalProps) {
   const [formData, setFormData] = useState({
-    title: post.title,
-    content: post.content,
-    mood: post.mood || 'neutral',
-    weather: post.weather || 'sunny',
-    musicPlaying: post.musicPlaying || '',
-    tags: post.tags || [],
+    title: post?.title || '',
+    content: post?.content || '',
+    mood: post?.mood || 'neutral',
+    weather: post?.weather || 'sunny',
+    musicPlaying: post?.musicPlaying || '',
+    tags: post?.tags || [],
   });
+
+  // Sincroniza formData quando o post muda (re-abertura do modal com outro post)
+  useEffect(() => {
+    if (post) {
+      setFormData({
+        title: post.title || '',
+        content: post.content || '',
+        mood: post.mood || 'neutral',
+        weather: post.weather || 'sunny',
+        musicPlaying: post.musicPlaying || '',
+        tags: post.tags || [],
+      });
+    }
+  }, [post]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,7 +149,7 @@ export default function EditPostModal({ post, isOpen, onClose, onSave }: EditPos
               placeholder="Seus pensamentos..."
               maxLength={10000}
             />
-            <p className="text-xs text-gray-400 mt-1">{formData.content.length}/10.000</p>
+            <p className="text-xs text-gray-400 mt-1">{(formData.content || '').length}/10.000</p>
           </div>
 
           {/* Mood & Weather */}

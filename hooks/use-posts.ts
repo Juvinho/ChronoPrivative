@@ -10,7 +10,9 @@ export interface PostEntry {
   id: number;
   title: string;
   content: string;
+  excerpt?: string;
   tag: string;
+  status?: string;
   created_at: string;
   updated_at?: string;
   user_id?: number;
@@ -65,7 +67,7 @@ export function usePosts(): UsePostsReturn {
         id: post.id,
         title: post.title,
         content: post.content,
-        tag: post.tag || 'LIFE',
+        tag: post.tags?.[0] || post.tag || 'LIFE',
         created_at: post.created_at,
         updated_at: post.updated_at,
         user_id: post.user_id,
@@ -74,10 +76,10 @@ export function usePosts(): UsePostsReturn {
         reactions_count: post.reactions_count || 0,
         comments_count: post.comments_count || 0,
         metadata: post.metadata || {},
-        imageUrl: post.image_url,
-        imageText: post.image_url ? 'Image attached' : undefined,
+        imageUrl: post.cover_image_url || post.image_url,
+        imageText: (post.cover_image_url || post.image_url) ? 'Image attached' : undefined,
         // Fallback for old structure
-        image_url: post.image_url
+        image_url: post.cover_image_url || post.image_url
       }));
 
       setPosts(transformedPosts);
