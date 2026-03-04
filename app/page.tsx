@@ -215,6 +215,24 @@ export default function Home() {
   // Fetch posts from backend
   const { posts: backendPosts, loading, error, refresh } = usePosts();
 
+  // Re-read token after login completes — the JWT fetch in LoginScreen is async
+  // and may finish after onUnlock fires. This effect retries until the token arrives.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const t = localStorage.getItem('auth_token');
+    if (t) { setAuthToken(t); return; }
+    // Token not stored yet — poll for up to 5s (10 × 500ms)
+    let attempts = 0;
+    const interval = setInterval(() => {
+      const stored = localStorage.getItem('auth_token');
+      if (stored || ++attempts >= 10) {
+        if (stored) setAuthToken(stored);
+        clearInterval(interval);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   const [posts, setPosts] = useState<Post[]>([]);
 
   // Sync backend posts with local state

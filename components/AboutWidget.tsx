@@ -23,8 +23,12 @@ export default function AboutWidget({ bio = DEFAULT_BIO, token, onBioUpdate }: A
     setError(null);
 
     try {
-      if (!token) {
-        throw new Error('Token de autenticação não disponível');
+      // token prop pode ser null por race condition no login (JWT ainda não armazenado
+      // quando onUnlock dispara). Lê localStorage como fallback garantido.
+      const effectiveToken = token ?? (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
+
+      if (!effectiveToken) {
+        throw new Error('Token de autenticação não disponível. Faça login novamente.');
       }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -32,7 +36,7 @@ export default function AboutWidget({ bio = DEFAULT_BIO, token, onBioUpdate }: A
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${effectiveToken}`,
         },
         body: JSON.stringify({ bio: newBio }),
       });
