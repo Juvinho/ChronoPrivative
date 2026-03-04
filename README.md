@@ -587,6 +587,6 @@ Obrigado por visitar o ChronoPrivative! Este projeto é resultado de:
 
 ---
 
-**Feito com 💜 e muita curiosidade digital**
+**Feito com 💜 por Juvinho**
 
 </div>
