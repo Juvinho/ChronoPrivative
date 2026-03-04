@@ -1,0 +1,153 @@
+// ═══════════════════════════════════════════
+// User Controller — Bio & Topics Management
+// ═══════════════════════════════════════════
+
+const { pool } = require('../db/pool');
+const { body, validationResult } = require('express-validator');
+
+// ─── UPDATE BIO ──────────────────────────
+
+async function updateBio(req, res) {
+  try {
+    // Validação de entrada
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validação falhou',
+        errors: errors.array(),
+      });
+    }
+
+    const { bio } = req.body;
+    const userId = req.user.id;
+
+    // Validação de tamanho (redundante, mas fail-safe)
+    if (!bio || typeof bio !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Bio deve ser uma string',
+      });
+    }
+
+    const bioTrimmed = bio.trim();
+
+    if (bioTrimmed.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bio excede o limite de 500 caracteres',
+      });
+    }
+
+    if (bioTrimmed.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bio não pode estar vazia',
+      });
+    }
+
+    // Atualizar bio no banco
+    const result = await pool.query(
+      `UPDATE users 
+       SET bio = $1, bio_updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, username, bio, bio_updated_at`,
+      [bioTrimmed, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado',
+      });
+    }
+
+    const user = result.rows[0];
+
+    return res.status(200).json({
+      success: true,
+      message: 'Bio atualizada com sucesso',
+      data: {
+        bio: user.bio,
+        updatedAt: user.bio_updated_at,
+      },
+    });
+  } catch (error) {
+    console.error('[USER_CONTROLLER] Error updating bio:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao atualizar bio',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+}
+
+// ─── GET TOPICS ──────────────────────────
+
+async function getTopics(req, res) {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, slug, count 
+       FROM topics 
+       ORDER BY count DESC, name ASC`
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error('[USER_CONTROLLER] Error fetching topics:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao carregar tópicos',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+}
+
+// ─── SEED TOPICS ──────────────────────────
+// Função auxiliar para popular topics iniciais
+
+async function seedTopics() {
+  try {
+    const defaultTopics = [
+      { name: 'LIFE', slug: 'life' },
+      { name: 'THOUGHTS', slug: 'thoughts' },
+      { name: 'TRAVEL', slug: 'travel' },
+      { name: 'MUSIC', slug: 'music' },
+      { name: 'RANDOM', slug: 'random' },
+    ];
+
+    for (const topic of defaultTopics) {
+      await pool.query(
+        `INSERT INTO topics (name, slug, count) 
+         VALUES ($1, $2, 0)
+         ON CONFLICT (name) DO NOTHING`,
+        [topic.name, topic.slug]
+      );
+    }
+
+    console.log('[TOPICS] Seed completado');
+  } catch (error) {
+    console.error('[TOPICS] Seed error:', error.message);
+  }
+}
+
+// ─── VALIDATORS ──────────────────────────
+
+const bioValidators = [
+  body('bio')
+    .isString()
+    .withMessage('Bio deve ser uma string')
+    .trim()
+    .isLength({ min: 1, max: 500 })
+    .withMessage('Bio deve ter entre 1 e 500 caracteres'),
+];
+
+module.exports = {
+  updateBio,
+  getTopics,
+  seedTopics,
+  bioValidators,
+};

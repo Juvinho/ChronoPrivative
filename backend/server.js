@@ -60,6 +60,7 @@ app.get('/', (req, res) => {
       reactions: '/api/reactions',
       comments: '/api/comments',
       tags: '/api/tags',
+      user: '/api/user',
     },
   });
 });
@@ -69,6 +70,7 @@ app.use('/api/posts', require('./src/routes/posts'));
 app.use('/api/reactions', require('./src/routes/reactions'));
 app.use('/api/comments', require('./src/routes/comments'));
 app.use('/api/tags', require('./src/routes/tags'));
+app.use('/api/user', require('./src/routes/users'));
 
 // ─── HEALTH CHECK APRIMORADO ────────────
 

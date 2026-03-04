@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS users (
     username    VARCHAR(50) UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     role        VARCHAR(20) DEFAULT 'admin',
+    bio         TEXT DEFAULT '',
+    bio_updated_at TIMESTAMP DEFAULT NOW(),
     created_at  TIMESTAMP DEFAULT NOW()
 );
 
@@ -80,6 +82,20 @@ CREATE TABLE IF NOT EXISTS tags (
     name    VARCHAR(50) UNIQUE NOT NULL,
     slug    VARCHAR(50) UNIQUE NOT NULL
 );
+
+-- ───────────────────────────────────────────
+-- TABELA: topics
+-- ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS topics (
+    id       SERIAL PRIMARY KEY,
+    name     VARCHAR(100) NOT NULL UNIQUE,
+    slug     VARCHAR(100) NOT NULL UNIQUE,
+    count    INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Índice para topics
+CREATE INDEX IF NOT EXISTS idx_topics_slug ON topics(slug);
 
 -- ───────────────────────────────────────────
 -- TABELA: post_tags (relação N:N)
