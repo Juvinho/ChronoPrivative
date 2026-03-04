@@ -70,7 +70,15 @@ export function sanitizePost(raw: Record<string, unknown>): Post {
       ? raw.status
       : 'draft') as Post['status'],
     tags,
-    metadata: (raw.metadata as PostMetadata) ?? {},
+    // T-001: metadata pode vir como string JSON do PostgreSQL JSONB — desserializar
+    metadata: (() => {
+      const m = raw.metadata;
+      if (!m) return {} as PostMetadata;
+      if (typeof m === 'string') {
+        try { return JSON.parse(m) as PostMetadata; } catch { return {} as PostMetadata; }
+      }
+      return m as PostMetadata;
+    })(),
     views: typeof raw.views === 'number' ? raw.views : undefined,
     author: (raw.author as string) ?? undefined,
     created_at: (raw.created_at as string) ?? '',
