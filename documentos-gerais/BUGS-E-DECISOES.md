@@ -285,6 +285,97 @@ CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_
 
 ---
 
+## Diagnóstico de Conectividade — 04/03/2026
+> Executado pelo: Backend Dev  
+> Sintoma reportado: bio editada via UI não persiste após salvar / reload
+
+### BLOCO 1 — Conexão com o banco
+**Status:** ✅ OK  
+**Resultado:** `GET /api/health` → `{ status: "ONLINE", database: "CONNECTED" }`. Pool conectando normalmente ao PostgreSQL. `pool.on('connect')` disparado na inicialização.  
+**Config `.env`:** `DATABASE_URL=postgresql://postgres:juvinho@localhost:5432/chronoprivative_db` — correto.  
+**Ação tomada:** Nenhuma. Aproveitou para melhorar `pool.on('error')`: `process.exit(-1)` agora só em erros fatais (authentication, not exists, permission denied) — erros transitórios continuam sem derrubar o processo. Resolve parcialmente A-02.
+
+---
+
+### BLOCO 2 — Endpoints de escrita
+**Status:** ✅ OK (todos os testados persistem)  
+**Resultado:**
+- `PUT /api/user/bio` → bio `"Teste E2E BIO - 2026-03-04T20:23:00.738Z"` encontrada no banco (`SELECT bio FROM users WHERE username='admin'`) — **persistindo**
+- `POST /api/posts/admin` → post `id=4, status='published', metadata='{}'` encontrado (`SELECT title, status, metadata FROM posts ORDER BY id DESC`) — **persistindo**
+- `metadata` JSONB: coluna **não existia no banco** (migration C-04 estava no SQL mas nunca executada). **Executado:** `ALTER TABLE posts ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'`. Agora funcional.  
+
+**Ação tomada:** Migration `metadata` executada no banco. PUT e POST funcionando corretamente.
+
+---
+
+### BLOCO 3 — Controller de bio (updateBio)
+**Status:** ✅ OK  
+**Resultado:**
+- `const { bio } = req.body` — campo correto
+- `req.user.id` — populado pelo authMiddleware corretamente
+- Query: `UPDATE users SET bio = $1, bio_updated_at = NOW() WHERE id = $2 RETURNING id, username, bio, bio_updated_at` — correta, usa `RETURNING`, verifica `rows.length === 0`
+- `rowCount` verificado via `result.rows.length === 0` → retorna 404 se usuário não encontrado  
+
+**Ação tomada:** Nenhuma — controller estava correto desde o início.
+
+---
+
+### BLOCO 4 — authMiddleware popula req.user?
+**Status:** ✅ OK  
+**Resultado:** `jwt.verify(token, JWT_SECRET)` → `req.user = { id: 1, username: 'admin', role: 'admin' }`. Token gerado em `authController.login` com payload `{ id, username, role }` — campos corretos. `blacklistToken` funciona via Set em memória (D-03 decidido: permanente em PostgreSQL — A-03 pendente Sprint 3).  
+
+**Ação tomada:** Nenhuma — middleware correto.
+
+---
+
+### BLOCO 5 — Tabela users tem as colunas necessárias?
+**Status:** ✅ OK  
+**Resultado:** `SELECT column_name FROM information_schema.columns WHERE table_name='users'`:
+```
+id              | integer
+username        | character varying
+password_hash   | text
+role            | character varying  | 'admin'
+created_at      | timestamp          | now()
+bio_updated_at  | timestamp          | now()   ← presente
+bio             | text               | ''      ← presente
+```
+Colunas `bio` e `bio_updated_at` existem (migration executada na sessão anterior).  
+
+**Ação tomada:** Nenhuma — schema correto.
+
+---
+
+### ❌ CAUSA RAIZ DO BUG — Não estava nos blocos
+
+**Problema:** `GET /api/user/bio` **não existia** no backend. O endpoint estava documentado em CONTEXT_MASTER.md linha 96 mas nunca implementado. O `AboutWidget` recebia `bio=""` via prop de `page.tsx` (onde `userBio` é `useState("")` sem fetch inicial). Após reload, a bio permanecia em branco mesmo com o último PUT tendo persistido corretamente no banco.
+
+**Cadeia do bug:**
+```
+page.tsx: const [userBio] = useState("")
+             ↓ sem fetch inicial
+AboutWidget: currentBio = "" (sempre vazio no reload)
+             ↓ user edita
+PUT /api/user/bio → 200 OK → bio salva no banco ✅
+             ↓ mas no reload
+GET /api/user/bio → 404 (rota não existe) → userBio continua ""
+```
+
+**Fixes aplicados:**
+1. `backend/src/controllers/userController.js` — nova função `getBio()`: `SELECT bio, bio_updated_at FROM users WHERE username='admin'` (público, sem auth)
+2. `backend/src/routes/users.js` — `router.get('/bio', getBio)` registrado
+3. `components/AboutWidget.tsx` — `useEffect` na montagem: `fetch GET /api/user/bio` → `setCurrentBio(data.data.bio)` + `onBioUpdate` callback
+
+**Verificação pós-fix:**
+```
+GET http://localhost:4000/api/user/bio
+→ 200 { "success": true, "data": { "bio": "Teste E2E BIO - 2026-03-04T20:23:00.738Z", "updatedAt": "..." } }
+```
+
+**Commit:** `4075daa` — master 04/03/2026
+
+---
+
 ## Log de Bloqueios por Sprint
 
 ### Sprint 1 — 04/03/2026
