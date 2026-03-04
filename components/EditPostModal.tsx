@@ -1,49 +1,56 @@
 'use client';
 
+// ⚠️ CONVENTION: NÃO declarar type Post neste arquivo.
+// Importar exclusivamente de @/lib/types. Ver CONTRIBUTING.md.
 import React, { useState, useEffect } from 'react';
 import { X, Save, AlertCircle } from 'lucide-react';
+import type { Post } from '@/lib/types';
+import { initFormData } from '@/lib/form';
 
 interface EditPostModalProps {
-  post: {
-    id: string;
-    title: string;
-    content: string;
-    mood?: string;
-    weather?: string;
-    musicPlaying?: string;
-    tags: string[];
-  };
+  post: Post;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedPost: any) => Promise<void>;
+  onSave: (updatedPost: Partial<Post>) => Promise<void>;
 }
 
 const MOOD_OPTIONS = ['happy', 'neutral', 'melancholy', 'stressed'];
 const WEATHER_OPTIONS = ['sunny', 'cloudy', 'rainy', 'snowy'];
 
-export default function EditPostModal({ post, isOpen, onClose, onSave }: EditPostModalProps) {
-  const [formData, setFormData] = useState({
-    title: post?.title || '',
-    content: post?.content || '',
-    mood: post?.mood || 'neutral',
-    weather: post?.weather || 'sunny',
-    musicPlaying: post?.musicPlaying || '',
-    tags: post?.tags || [],
-  });
+const DEFAULT_FORM = {
+  title: '',
+  content: '',
+  mood: 'neutral',
+  weather: 'sunny',
+  musicPlaying: '',
+  tags: [] as string[],
+};
 
-  // Sincroniza formData quando o post muda (re-abertura do modal com outro post)
+/** Mapeia um Post (API) para o shape plano do formData */
+function postToFormData(p: Post | null | undefined): typeof DEFAULT_FORM {
+  return initFormData(
+    p
+      ? {
+          title: p.title,
+          content: p.content,
+          mood: p.metadata?.mood,
+          weather: p.metadata?.weather,
+          musicPlaying: p.metadata?.listening,
+          tags: p.tags.map((t) => t.name),
+        }
+      : null,
+    DEFAULT_FORM
+  );
+}
+
+export default function EditPostModal({ post, isOpen, onClose, onSave }: EditPostModalProps) {
+  const [formData, setFormData] = useState(() => postToFormData(post));
+
+  // Sincroniza formData quando o post muda — depende do ID, não do objeto inteiro
   useEffect(() => {
-    if (post) {
-      setFormData({
-        title: post.title || '',
-        content: post.content || '',
-        mood: post.mood || 'neutral',
-        weather: post.weather || 'sunny',
-        musicPlaying: post.musicPlaying || '',
-        tags: post.tags || [],
-      });
-    }
-  }, [post]);
+    setFormData(postToFormData(post));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post?.id]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +94,20 @@ export default function EditPostModal({ post, isOpen, onClose, onSave }: EditPos
     try {
       await onSave({
         ...post,
-        ...formData,
+        title: formData.title,
+        content: formData.content,
+        metadata: {
+          ...(post.metadata ?? {}),
+          mood: formData.mood,
+          weather: formData.weather,
+          listening: formData.musicPlaying,
+        },
+        // Converter tags string[] de volta para Tag[] (formato da API)
+        tags: formData.tags.map((name) => ({
+          id: 0,
+          name,
+          slug: name.toLowerCase().replace(/\s+/g, '-'),
+        })),
       });
       onClose();
     } catch (err) {

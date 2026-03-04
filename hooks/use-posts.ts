@@ -1,29 +1,13 @@
+// ⚠️ CONVENTION: NÃO redeclarar PostEntry localmente em outros arquivos.
+// Importar de @/hooks/use-posts (re-exporta Post de @/lib/types).
 import { useState, useEffect } from 'react';
+import { type Post, sanitizePost } from '@/lib/types';
 
-interface PostMetadata {
-  mood?: string;
-  weather?: string;
-  listening?: string;
-}
-
-export interface PostEntry {
-  id: number;
-  title: string;
-  content: string;
-  excerpt?: string;
-  tag: string;
-  status?: string;
-  created_at: string;
-  updated_at?: string;
-  user_id?: number;
-  slug?: string;
-  views_count?: number;
-  reactions_count?: number;
-  comments_count?: number;
-  metadata?: PostMetadata;
-  imageUrl?: string;
+// PostEntry estende o tipo autoritativo Post com campos de UI específicos do feed
+export interface PostEntry extends Post {
+  tag: string;         // tag principal para exibição no feed
+  imageUrl?: string;   // alias de cover_image_url para compatibilidade UI
   imageText?: string;
-  image_url?: string;
   hasImage?: boolean;
   time?: string;
 }
@@ -61,26 +45,18 @@ export function usePosts(): UsePostsReturn {
       }
 
       const data = await response.json();
-      
-      // Transform API response to match Post interface
-      const transformedPosts = (data.posts || []).map((post: any) => ({
-        id: post.id,
-        title: post.title,
-        content: post.content,
-        tag: post.tags?.[0] || post.tag || 'LIFE',
-        created_at: post.created_at,
-        updated_at: post.updated_at,
-        user_id: post.user_id,
-        slug: post.slug,
-        views_count: post.views_count || 0,
-        reactions_count: post.reactions_count || 0,
-        comments_count: post.comments_count || 0,
-        metadata: post.metadata || {},
-        imageUrl: post.cover_image_url || post.image_url,
-        imageText: (post.cover_image_url || post.image_url) ? 'Image attached' : undefined,
-        // Fallback for old structure
-        image_url: post.cover_image_url || post.image_url
-      }));
+
+      // Mapear posts da API: sanitizePost garante que nenhum campo seja undefined
+      const transformedPosts: PostEntry[] = (data.posts || []).map((raw: Record<string, unknown>) => {
+        const post = sanitizePost(raw);
+        return {
+          ...post,
+          tag: post.tags.length > 0 ? post.tags[0].name : 'LIFE',
+          imageUrl: post.cover_image_url ?? undefined,
+          imageText: post.cover_image_url ? 'Image attached' : undefined,
+          hasImage: !!post.cover_image_url,
+        };
+      });
 
       setPosts(transformedPosts);
     } catch (err) {

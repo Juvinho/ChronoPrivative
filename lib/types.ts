@@ -3,21 +3,79 @@
  * Central type definitions for all components and hooks
  */
 
-/** Post Interface - Core data model */
+// ⚠️ CONVENTION: NÃO declarar type Post em nenhum outro arquivo.
+// Importar exclusivamente de @/lib/types.
+// Redeclarações locais serão rejeitadas em code review.
+
+/** Tag retornada pela API */
+export interface Tag {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+/** Metadata de Post (mood, weather, listening) */
+export interface PostMetadata {
+  mood?: string;
+  weather?: string;
+  listening?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Post — tipo autoritativo. Alinhado com a resposta da API.
+ * Campos sem ? são obrigatórios; nunca undefined após sanitizePost().
+ */
 export interface Post {
-  id: string;
+  id: number;
   title: string;
-  content: string;
-  createdAt: string;
-  updatedAt?: string;
-  mood?: 'happy' | 'sad' | 'angry' | 'calm' | 'excited' | 'nostalgic';
-  weather?: 'sunny' | 'cloudy' | 'rainy' | 'stormy' | 'snowy';
-  tags?: string[];
-  images?: Image[];
-  isFavorite?: boolean;
-  imageUrl?: string;
-  imageText?: string;
-  hasImage?: boolean;
+  slug: string;
+  content: string;           // obrigatório — '' se ausente
+  excerpt: string;           // obrigatório — '' se ausente
+  cover_image_url: string | null;
+  status: 'published' | 'draft' | 'archived';
+  tags: Tag[];               // obrigatório — [] se ausente
+  metadata: PostMetadata;    // obrigatório — {} se ausente
+  views?: number;
+  author?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+/**
+ * Sanitiza um post vindo da API para garantir que nenhum campo
+ * obrigatório seja undefined. Usar no mapeamento de respostas da API.
+ *
+ * @example
+ * const posts = data.posts.map(sanitizePost);
+ */
+export function sanitizePost(raw: Record<string, unknown>): Post {
+  const rawTags = raw.tags;
+  const tags: Tag[] = Array.isArray(rawTags)
+    ? rawTags.map((t) =>
+        typeof t === 'string'
+          ? { id: 0, name: t, slug: t.toLowerCase().replace(/\s+/g, '-') }
+          : (t as Tag)
+      )
+    : [];
+
+  return {
+    id: typeof raw.id === 'number' ? raw.id : Number(raw.id ?? 0),
+    title: (raw.title as string) ?? '',
+    slug: (raw.slug as string) ?? '',
+    content: (raw.content as string) ?? '',
+    excerpt: (raw.excerpt as string) ?? '',
+    cover_image_url: (raw.cover_image_url as string | null) ?? null,
+    status: (['published', 'draft', 'archived'].includes(raw.status as string)
+      ? raw.status
+      : 'draft') as Post['status'],
+    tags,
+    metadata: (raw.metadata as PostMetadata) ?? {},
+    views: typeof raw.views === 'number' ? raw.views : undefined,
+    author: (raw.author as string) ?? undefined,
+    created_at: (raw.created_at as string) ?? '',
+    updated_at: (raw.updated_at as string) ?? undefined,
+  };
 }
 
 /** Image Interface */

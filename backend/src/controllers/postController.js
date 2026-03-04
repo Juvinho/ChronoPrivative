@@ -5,6 +5,29 @@
 const { query, transaction } = require('../db/pool');
 const { uniqueSlug } = require('../utils/slugify');
 
+/**
+ * Garante que nenhum campo obrigatório saia undefined da API.
+ * Torna o contrato frontend↔backend explícito e auditável.
+ * Aplicar em TODA resposta que retorna posts ao cliente.
+ */
+function sanitizePostResponse(post) {
+  return {
+    id: post.id,
+    title: post.title || '',
+    slug: post.slug || '',
+    content: post.content || '',
+    excerpt: post.excerpt || '',
+    cover_image_url: post.cover_image_url || null,
+    status: post.status || 'draft',
+    tags: Array.isArray(post.tags) ? post.tags : [],
+    metadata: post.metadata || {},
+    views: post.views || 0,
+    author: post.author || null,
+    created_at: post.created_at,
+    updated_at: post.updated_at || null,
+  };
+}
+
 // ─── ROTAS PÚBLICAS ──────────────────────
 
 // GET /api/posts — Lista posts publicados com paginação
@@ -55,7 +78,7 @@ async function listPublishedPosts(req, res) {
     );
 
     return res.status(200).json({
-      posts: postsResult.rows,
+      posts: postsResult.rows.map(sanitizePostResponse),
       pagination: {
         page,
         limit,
@@ -109,7 +132,7 @@ async function getPostBySlug(req, res) {
       [post.id, viewerIp, userAgent]
     ).catch(() => {});
 
-    return res.status(200).json({ post });
+    return res.status(200).json({ post: sanitizePostResponse(post) });
   } catch (error) {
     console.error('[POSTS] Erro ao buscar post:', error.message);
     return res.status(500).json({ error: 'SERVER_ERROR', message: 'Erro interno.' });

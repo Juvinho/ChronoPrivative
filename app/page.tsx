@@ -238,21 +238,13 @@ export default function Home() {
   // Sync backend posts with local state
   useEffect(() => {
     if (backendPosts.length > 0) {
-      const transformedPosts: Post[] = backendPosts.map((post: any) => ({
-        id: post.id,
-        title: post.title,
-        content: post.content || '',
-        excerpt: post.excerpt || '',
-        tag: post.tags?.[0] || post.tag || 'LIFE',
-        created_at: post.created_at,
-        time: formatTimeAgo(post.created_at),
-        metadata: post.metadata || {},
-        status: post.status,
-        hasImage: !!(post.cover_image_url || post.imageUrl || post.image_url),
-        imageUrl: post.cover_image_url || post.imageUrl || post.image_url || null,
-        imageText: (post.cover_image_url || post.imageUrl || post.image_url) ? 'Image' : undefined,
-      }));
-      setPosts(transformedPosts);
+    // backendPosts já é PostEntry[] sanitizado por usePosts/sanitizePost
+    // Apenas adicionar campo de UI 'time' calculado em runtime
+    const transformedPosts: Post[] = backendPosts.map((post) => ({
+      ...post,
+      time: formatTimeAgo(post.created_at),
+    }));
+    setPosts(transformedPosts);
     }
   }, [backendPosts]);
 
@@ -416,7 +408,7 @@ export default function Home() {
     }
   };
 
-  const handleSaveEdit = async (updatedPost: { id: string; title: string; content: string; tags: string[]; mood?: string; weather?: string; musicPlaying?: string }) => {
+  const handleSaveEdit = async (updatedPost: Partial<Post>) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
     const response = await fetch(`${apiUrl}/api/posts/admin/${updatedPost.id}`, {
@@ -428,11 +420,11 @@ export default function Home() {
       body: JSON.stringify({
         title: updatedPost.title,
         content: updatedPost.content,
-        tags: updatedPost.tags,
+        tags: updatedPost.tags?.map((t) => t.name),
         metadata: {
-          mood: updatedPost.mood,
-          weather: updatedPost.weather,
-          listening: updatedPost.musicPlaying,
+          mood: updatedPost.metadata?.mood,
+          weather: updatedPost.metadata?.weather,
+          listening: updatedPost.metadata?.listening,
         },
       })
     });
@@ -444,7 +436,10 @@ export default function Home() {
 
     const result = await response.json();
     setPosts(prev =>
-      prev.map(p => (p.id === Number(updatedPost.id) ? { ...p, ...result.post, tag: updatedPost.tags[0] ?? p.tag } : p))
+      prev.map(p => (p.id === Number(updatedPost.id) ? {
+        ...p, ...result.post,
+        tag: updatedPost.tags?.[0]?.name ?? p.tag,
+      } : p))
     );
   };
 
@@ -1445,15 +1440,7 @@ export default function Home() {
 
       {editingPost && (
         <EditPostModal
-          post={{
-            id: editingPost.id.toString(),
-            title: editingPost.title,
-            content: editingPost.content,
-            mood: editingPost.metadata?.mood,
-            weather: editingPost.metadata?.weather,
-            musicPlaying: editingPost.metadata?.listening,
-            tags: editingPost.tag ? [editingPost.tag] : [],
-          }}
+          post={editingPost}
           isOpen={true}
           onClose={() => setEditingPost(null)}
           onSave={handleSaveEdit}
