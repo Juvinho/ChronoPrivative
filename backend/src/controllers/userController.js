@@ -5,6 +5,39 @@
 const { pool } = require('../db/pool');
 const { body, validationResult } = require('express-validator');
 
+// ─── GET BIO ─────────────────────────────
+
+async function getBio(req, res) {
+  try {
+    // Bio é pública — retorna a bio do admin (único autor do blog)
+    const result = await pool.query(
+      `SELECT bio, bio_updated_at FROM users WHERE username = 'admin' LIMIT 1`
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        bio: result.rows[0].bio || '',
+        updatedAt: result.rows[0].bio_updated_at,
+      },
+    });
+  } catch (error) {
+    console.error('[USER_CONTROLLER] Error fetching bio:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao carregar bio',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+}
+
 // ─── UPDATE BIO ──────────────────────────
 
 async function updateBio(req, res) {
@@ -20,7 +53,7 @@ async function updateBio(req, res) {
     }
 
     const { bio } = req.body;
-    const userId = req.user?.id;
+    const userId = req.user.id;
 
     // Validação de tamanho (redundante, mas fail-safe)
     if (!bio || typeof bio !== 'string') {
@@ -156,6 +189,7 @@ const bioValidators = [
 ];
 
 module.exports = {
+  getBio,
   updateBio,
   getTopics,
   seedTopics,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Terminal, Edit3, AlertCircle } from 'lucide-react';
 import BioEditModal from './BioEditModal';
 
@@ -17,6 +17,24 @@ export default function AboutWidget({ bio = DEFAULT_BIO, token, onBioUpdate }: A
   const [currentBio, setCurrentBio] = useState(bio);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Busca a bio atual do servidor na montagem do componente
+  // Garante que após um reload a bio persistida no banco seja exibida
+  useEffect(() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    fetch(`${apiUrl}/api/user/bio`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && data.data?.bio) {
+          setCurrentBio(data.data.bio);
+          onBioUpdate?.(data.data.bio);
+        }
+      })
+      .catch(() => {
+        // Silencioso: mantém o valor do prop em caso de erro de rede
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSaveBio = async (newBio: string) => {
     setIsSaving(true);

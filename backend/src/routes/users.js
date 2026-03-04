@@ -4,8 +4,16 @@
 
 const express = require('express');
 const router = express.Router();
-const { updateBio, getTopics, bioValidators } = require('../controllers/userController');
+const { getBio, updateBio, getTopics, bioValidators } = require('../controllers/userController');
 const { authMiddleware } = require('../middlewares/authMiddleware');
+
+/**
+ * GET /api/user/bio
+ * Retorna a bio pública do autor (sem autenticação)
+ * 
+ * @returns { success, data: { bio, updatedAt } }
+ */
+router.get('/bio', getBio);
 
 /**
  * PUT /api/user/bio
