@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle } from 'lucide-react';
+import { X, Save, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface BioEditModalProps {
   isOpen: boolean;
@@ -9,6 +9,7 @@ interface BioEditModalProps {
   onClose: () => void;
   onSave: (newBio: string) => void;
   isSaving?: boolean;
+  onError?: (error: string) => void;
 }
 
 export default function BioEditModal({
@@ -17,13 +18,16 @@ export default function BioEditModal({
   onClose,
   onSave,
   isSaving = false,
+  onError,
 }: BioEditModalProps) {
   const [bio, setBio] = useState(currentBio);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     setBio(currentBio);
     setError(null);
+    setSuccess(false);
   }, [isOpen, currentBio]);
 
   const handleSave = () => {
@@ -72,13 +76,19 @@ export default function BioEditModal({
 
         {/* Content */}
         <div className="p-6 space-y-4">
-          {/* Error Message */}
-          {error && (
-            <div className="p-3 rounded border-l-4 border-red-500 bg-red-500/10 text-red-400 flex items-center gap-2">
-              <AlertCircle size={18} />
-              <span>{error}</span>
-            </div>
-          )}
+        {/* Error/Success Message */}
+        {error && (
+          <div className="p-3 rounded border-l-4 border-red-500 bg-red-500/10 text-red-400 flex items-center gap-2 animate-in fade-in">
+            <AlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+        )}
+        {success && (
+          <div className="p-3 rounded border-l-4 border-[var(--theme-accent)] bg-[var(--theme-accent)]/10 text-[var(--theme-accent)] flex items-center gap-2 animate-in fade-in">
+            <CheckCircle size={18} />
+            <span>Bio atualizada com sucesso!</span>
+          </div>
+        )}
 
           {/* Bio Input */}
           <div className="space-y-2">
