@@ -421,6 +421,19 @@ async function getArchives(req, res) {
   }
 }
 
+// POST /api/posts/admin/upload-image
+// Recebe uma imagem via multipart (campo 'image'), salva em disco e retorna a URL.
+async function uploadPostImageHandler(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ error: 'NO_FILE', message: 'Nenhuma imagem enviada.' });
+  }
+
+  const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 4000}`;
+  const url = `${apiUrl}/uploads/posts/${req.file.filename}`;
+
+  return res.status(200).json({ success: true, url });
+}
+
 module.exports = {
   listPublishedPosts,
   getPostBySlug,
@@ -430,4 +443,5 @@ module.exports = {
   updatePost,
   deletePost,
   updatePostStatus,
+  uploadPostImageHandler,
 };

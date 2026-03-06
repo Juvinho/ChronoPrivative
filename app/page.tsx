@@ -55,6 +55,7 @@ export default function Home() {
   const [showMarkdownHelp, setShowMarkdownHelp] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const contentRef = useRef<HTMLTextAreaElement>(null);
   
@@ -108,20 +109,41 @@ export default function Home() {
     }, 0);
   };
 
-  const processFile = (file: File) => {
-    if (file && file.type.startsWith('image/')) {
-      // Check file size (5MB limit as mentioned in UI)
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File is too large. Max 5MB.");
-        return;
+  const processFile = async (file: File) => {
+    if (!file || !file.type.startsWith('image/')) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File is too large. Max 5MB.');
+      return;
+    }
+
+    // Preview local imediato enquanto o upload ocorre
+    const reader = new FileReader();
+    reader.onloadend = () => setPostImage(reader.result as string);
+    reader.readAsDataURL(file);
+    setPostImageText(file.name.toUpperCase());
+
+    // Upload real para o servidor → cover_image_url armazena URL, não base64
+    setIsUploadingImage(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch(`${apiUrl}/api/posts/admin/upload-image`, {
+        method: 'POST',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPostImage(data.url); // substitui preview base64 pela URL definitiva
       }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPostImage(reader.result as string);
-        setPostImageText(file.name.toUpperCase());
-      };
-      reader.readAsDataURL(file);
+    } catch {
+      // Mantém o preview base64 como fallback — post ainda pode ser publicado
+      console.warn('[UPLOAD] Falha ao enviar imagem para o servidor.');
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -795,16 +817,23 @@ export default function Home() {
                       <div className="relative border border-[var(--theme-border-primary)] rounded p-2 bg-[var(--theme-bg-tertiary)]">
                         <button 
                           onClick={removeImage}
-                          className="absolute top-4 right-4 z-10 bg-[var(--theme-bg-primary)] border border-[var(--theme-border-primary)] text-[var(--theme-text-primary)] hover:text-red-500 hover:border-red-500 rounded p-1 transition-colors"
+                          disabled={isUploadingImage}
+                          className="absolute top-4 right-4 z-10 bg-[var(--theme-bg-primary)] border border-[var(--theme-border-primary)] text-[var(--theme-text-primary)] hover:text-red-500 hover:border-red-500 rounded p-1 transition-colors disabled:opacity-30"
                         >
                           <X className="w-4 h-4" />
                         </button>
+                        {isUploadingImage && (
+                          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 rounded gap-2">
+                            <Loader className="w-6 h-6 text-[var(--theme-primary)] animate-spin" />
+                            <span className="text-[10px] font-mono tracking-widest text-[var(--theme-primary)]">UPLOADING...</span>
+                          </div>
+                        )}
                         <RetroImagePlaceholder 
                           src={postImage} 
                           text={postImageText} 
                           altText={`Preview image for entry: ${postTitle || "Untitled"}`}
                           className="w-full h-48 sm:h-64" 
-                          onClick={() => postImage && setSelectedImage({ url: postImage, title: postImageText })}
+                          onClick={() => postImage && !isUploadingImage && setSelectedImage({ url: postImage, title: postImageText })}
                         />
                       </div>
                     )}
@@ -885,10 +914,11 @@ export default function Home() {
                       </button>
                       <button 
                         onClick={handlePublish}
-                        className="bg-[var(--theme-primary)] hover:bg-[var(--theme-secondary)] text-white font-bold py-2 px-6 rounded-sm transition-colors flex items-center gap-2 shadow-[0_0_10px_var(--theme-primary)]"
+                        disabled={isUploadingImage}
+                        className="bg-[var(--theme-primary)] hover:bg-[var(--theme-secondary)] text-white font-bold py-2 px-6 rounded-sm transition-colors flex items-center gap-2 shadow-[0_0_10px_var(--theme-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Send className="w-4 h-4" />
-                        Publish Entry
+                        {isUploadingImage ? <Loader className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        {isUploadingImage ? 'Uploading...' : 'Publish Entry'}
                       </button>
                     </div>
                   </div>
@@ -970,10 +1000,11 @@ export default function Home() {
                     </button>
                     <button 
                       onClick={handlePublish}
-                      className="bg-[var(--theme-primary)] hover:bg-[var(--theme-secondary)] text-white font-bold py-2 px-6 rounded-sm transition-colors flex items-center gap-2 shadow-[0_0_10px_var(--theme-primary)]"
+                      disabled={isUploadingImage}
+                      className="bg-[var(--theme-primary)] hover:bg-[var(--theme-secondary)] text-white font-bold py-2 px-6 rounded-sm transition-colors flex items-center gap-2 shadow-[0_0_10px_var(--theme-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Send className="w-4 h-4" />
-                      Publish Entry
+                      {isUploadingImage ? <Loader className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      {isUploadingImage ? 'Uploading...' : 'Publish Entry'}
                     </button>
                   </div>
                 </div>
