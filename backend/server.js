@@ -45,8 +45,18 @@ app.use('/api', apiLimiter);
 // Trust proxy (para IP correto atrás de reverse proxy)
 app.set('trust proxy', 1);
 
-// Arquivos estáticos — avatares e uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Arquivos estáticos — avatares e uploads de posts
+// Cross-Origin-Resource-Policy: cross-origin — obrigatório para o Next.js
+// (localhost:3000) carregar imagens servidas pelo backend (localhost:4000).
+// O helmet define same-origin por padrão, o que bloquearia <img> cross-origin.
+app.use(
+  '/uploads',
+  (req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  },
+  express.static(path.join(__dirname, 'uploads'))
+);
 
 // ─── ROTAS ───────────────────────────────
 
