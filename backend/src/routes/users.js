@@ -1,35 +1,65 @@
 // ═══════════════════════════════════════════
-// Routes — User Management (Bio & Topics)
+// Routes — User Management (Profile, Bio & Topics)
 // ═══════════════════════════════════════════
 
 const express = require('express');
 const router = express.Router();
-const { getBio, updateBio, getTopics, bioValidators } = require('../controllers/userController');
+const {
+  getProfile,
+  getBio,
+  updateBio,
+  updateUsername,
+  uploadAvatarHandler,
+  getTopics,
+  bioValidators,
+  usernameValidators,
+} = require('../controllers/userController');
 const { authMiddleware } = require('../middlewares/authMiddleware');
+const { uploadAvatar } = require('../middlewares/upload');
+
+/**
+ * GET /api/user/profile
+ * Retorna username e avatarUrl do autor (público)
+ */
+router.get('/profile', getProfile);
+
+/**
+ * PATCH /api/user/username
+ * Atualiza o username do usuário autenticado
+ * @requires JWT Token (Bearer)
+ * @body { username: string (3–30 chars, alfanumérico + _) }
+ */
+router.patch('/username', authMiddleware, usernameValidators, updateUsername);
+
+/**
+ * POST /api/user/avatar
+ * Recebe um arquivo via multipart/form-data (campo 'avatar')
+ * @requires JWT Token (Bearer)
+ * @body FormData com campo 'avatar' (JPG/PNG/GIF/WEBP, máx 2MB)
+ */
+router.post(
+  '/avatar',
+  authMiddleware,
+  uploadAvatar.single('avatar'),
+  uploadAvatarHandler
+);
 
 /**
  * GET /api/user/bio
- * Retorna a bio pública do autor (sem autenticação)
- * 
- * @returns { success, data: { bio, updatedAt } }
+ * Retorna a bio pública do autor
  */
 router.get('/bio', getBio);
 
 /**
  * PUT /api/user/bio
  * Atualiza a bio do usuário autenticado
- * 
  * @requires JWT Token (Bearer)
- * @body { bio: string (1-500 chars) }
- * @returns { success, message, data: { bio, updatedAt } }
  */
 router.put('/bio', authMiddleware, bioValidators, updateBio);
 
 /**
  * GET /api/user/topics
  * Retorna lista de tópicos disponíveis
- * 
- * @returns { success, data: [{ id, name, slug, count }] }
  */
 router.get('/topics', getTopics);
 

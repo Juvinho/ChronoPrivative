@@ -8,6 +8,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
 const { apiLimiter } = require('./src/middlewares/rateLimiter');
 const { pool } = require('./src/db/pool');
 
@@ -43,6 +44,9 @@ app.use('/api', apiLimiter);
 
 // Trust proxy (para IP correto atrás de reverse proxy)
 app.set('trust proxy', 1);
+
+// Arquivos estáticos — avatares e uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ─── ROTAS ───────────────────────────────
 

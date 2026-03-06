@@ -165,3 +165,9 @@ CREATE TABLE IF NOT EXISTS revoked_tokens (
 );
 CREATE INDEX IF NOT EXISTS idx_revoked_tokens_token   ON revoked_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at);
+
+-- ───────────────────────────────────────────
+-- MIGRATION: Perfil de usuário — avatar e username (06/03/2026)
+-- ───────────────────────────────────────────
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url          TEXT DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS username_updated_at TIMESTAMP DEFAULT NOW();

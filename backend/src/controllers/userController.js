@@ -1,9 +1,114 @@
 // ═══════════════════════════════════════════
-// User Controller — Bio & Topics Management
+// User Controller — Bio, Avatar & Username
 // ═══════════════════════════════════════════
 
 const { pool } = require('../db/pool');
 const { body, validationResult } = require('express-validator');
+const path = require('path');
+const fs = require('fs');
+
+// ─── GET PROFILE ────────────────────────
+
+async function getProfile(req, res) {
+  try {
+    const result = await pool.query(
+      `SELECT username, avatar_url FROM users LIMIT 1`
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
+    }
+
+    const user = result.rows[0];
+    const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 4000}`;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        username: user.username,
+        avatarUrl: user.avatar_url ? `${apiUrl}${user.avatar_url}` : null,
+      },
+    });
+  } catch (error) {
+    console.error('[USER_CONTROLLER] Erro ao buscar perfil:', error.message);
+    return res.status(500).json({ success: false, message: 'Erro ao carregar perfil' });
+  }
+}
+
+// ─── UPDATE USERNAME ─────────────────────
+
+async function updateUsername(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, errors: errors.array() });
+  }
+
+  const { username } = req.body;
+  const userId = req.user.id;
+  const usernameTrimmed = username.trim();
+
+  try {
+    // Verifica se o username já está em uso por outro usuário
+    const existing = await pool.query(
+      'SELECT id FROM users WHERE username = $1 AND id != $2',
+      [usernameTrimmed, userId]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ success: false, message: 'Username já está em uso.' });
+    }
+
+    const result = await pool.query(
+      `UPDATE users
+       SET username = $1, username_updated_at = NOW()
+       WHERE id = $2
+       RETURNING username`,
+      [usernameTrimmed, userId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Username atualizado com sucesso.',
+      data: { username: result.rows[0].username },
+    });
+  } catch (error) {
+    console.error('[USER_CONTROLLER] Erro ao atualizar username:', error.message);
+    return res.status(500).json({ success: false, message: 'Erro ao atualizar username.' });
+  }
+}
+
+// ─── UPLOAD AVATAR ───────────────────────
+
+async function uploadAvatarHandler(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'Nenhuma imagem enviada.' });
+  }
+
+  const userId = req.user.id;
+  const avatarPath = `/uploads/avatars/${req.file.filename}`;
+
+  try {
+    // Remove o arquivo antigo do disco se existir
+    const old = await pool.query('SELECT avatar_url FROM users WHERE id = $1', [userId]);
+    const oldUrl = old.rows[0]?.avatar_url;
+    if (oldUrl) {
+      const oldFile = path.join(__dirname, '../../', oldUrl);
+      if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
+    }
+
+    await pool.query('UPDATE users SET avatar_url = $1 WHERE id = $2', [avatarPath, userId]);
+
+    const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 4000}`;
+    return res.status(200).json({
+      success: true,
+      message: 'Avatar atualizado com sucesso.',
+      data: { avatarUrl: `${apiUrl}${avatarPath}` },
+    });
+  } catch (error) {
+    console.error('[USER_CONTROLLER] Erro ao salvar avatar:', error.message);
+    return res.status(500).json({ success: false, message: 'Erro ao salvar avatar.' });
+  }
+}
 
 // ─── GET BIO ─────────────────────────────
 
@@ -188,10 +293,25 @@ const bioValidators = [
     .withMessage('Bio deve ter entre 1 e 500 caracteres'),
 ];
 
+const usernameValidators = [
+  body('username')
+    .isString()
+    .withMessage('Username deve ser uma string')
+    .trim()
+    .isLength({ min: 3, max: 30 })
+    .withMessage('Username deve ter entre 3 e 30 caracteres')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Username só pode conter letras, números e underscore (_)'),
+];
+
 module.exports = {
+  getProfile,
   getBio,
   updateBio,
+  updateUsername,
+  uploadAvatarHandler,
   getTopics,
   seedTopics,
   bioValidators,
+  usernameValidators,
 };

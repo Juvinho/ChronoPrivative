@@ -17,6 +17,8 @@ import AboutWidget from "@/components/AboutWidget";
 import TopicsWidget from "@/components/TopicsWidget";
 import ArchivesWidget from "@/components/ArchivesWidget";
 import EditPostModal from "@/components/EditPostModal";
+import UserProfileModal from "@/components/UserProfileModal";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 export default function Home() {
   // Helper function to format time ago
@@ -35,6 +37,7 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [userBio, setUserBio] = useState<string>("");
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   
@@ -271,6 +274,14 @@ export default function Home() {
   const [deletedPost, setDeletedPost] = useState<{ post: any, index: number } | null>(null);
   const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
   const [expandedMetadata, setExpandedMetadata] = useState<Record<number, boolean>>({});
+
+  const {
+    profile: userProfile,
+    isLoading: profileLoading,
+    error: profileError,
+    updateUsername,
+    uploadAvatar,
+  } = useUserProfile(authToken);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
@@ -578,8 +589,21 @@ export default function Home() {
             <Lock className="w-4 h-4" />
             <span className="text-sm">Personal Diary</span>
           </div>
-          <button className="w-10 h-10 rounded-full bg-[var(--theme-bg-tertiary)] flex items-center justify-center border border-[var(--theme-border-primary)] hover:border-[var(--theme-secondary)] transition-colors">
-            <User className="w-5 h-5" />
+          <button
+            onClick={() => setIsProfileModalOpen(true)}
+            className="w-10 h-10 rounded-full bg-[var(--theme-bg-tertiary)] flex items-center justify-center border border-[var(--theme-border-primary)] hover:border-[var(--theme-primary)] transition-colors overflow-hidden"
+            title="Editar perfil"
+          >
+            {userProfile.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={userProfile.avatarUrl}
+                alt="Avatar"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <User className="w-5 h-5" />
+            )}
           </button>
         </div>
       </header>
@@ -1466,6 +1490,17 @@ export default function Home() {
           onSave={handleSaveEdit}
         />
       )}
+
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        username={userProfile.username}
+        avatarUrl={userProfile.avatarUrl}
+        isLoading={profileLoading}
+        error={profileError}
+        onUpdateUsername={updateUsername}
+        onUploadAvatar={uploadAvatar}
+      />
     </div>
   );
 }
