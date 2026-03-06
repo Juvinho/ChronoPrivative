@@ -1,3 +1,18 @@
+### 2026-03-06 12:15 · BUGFIX · Backend Engineer
+**Status:** CONCLUÍDO ✅
+**Problema:** Imagens de posts eram enviadas como base64 DataURL via JSON body → armazenadas como blobs de texto no banco. Imagens grandes falhavam silenciosamente ou tornavam os fetches lentos. Exibição no feed usava campo `imageUrl` que só existia após mapeamento do `use-posts.ts` (correto), mas o fluxo de publicação passava base64 para `cover_image_url` no DB.
+**Causa raiz:** `processFile` em `app/page.tsx` lia o arquivo com `FileReader.readAsDataURL` e mandava o resultado como campo JSON. O backend aceitava e armazenava a string. Não havia endpoint dedicado de upload para posts.
+**Solução:**
+  - `backend/src/middlewares/upload.js` — refatorado: extraiu lógica comum `fileFilter`/`ensureDir`; adicionou `uploadPostImage` multer com dest `uploads/posts/`, limite 5MB
+  - `backend/src/controllers/postController.js` — +`uploadPostImageHandler`: salva arquivo no disco, retorna URL absoluta
+  - `backend/src/routes/posts.js` — +`POST /api/posts/admin/upload-image` (auth + multer), registrado antes de `/admin`
+  - `app/page.tsx` — `processFile` vira `async`: exibe preview base64 local imediatamente (UX), faz upload real em paralelo, substitui `postImage` pela URL definitiva quando upload conclui
+  - `app/page.tsx` — estado `isUploadingImage`: spinner no preview + botões "Publish Entry" desabilitados durante o upload
+**Commit:** `aac0455` · TypeScript `tsc --noEmit` passou sem erros
+**Próximo agente:** IA-2 (QA) — testar fluxo completo de upload de imagem
+
+---
+
 ### 2026-03-06 11:30 · FEAT · Frontend Engineer
 **Status:** CONCLUÍDO ✅
 **Tarefa:** Perfil de usuário — avatar e username, solicitação do cliente
