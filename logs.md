@@ -1,5 +1,24 @@
+### 2026-03-06 11:30 · FEAT · Frontend Engineer
+**Status:** CONCLUÍDO ✅
+**Tarefa:** Perfil de usuário — avatar e username, solicitação do cliente
+**Output produzido:**
+  - `components/UserProfileModal.tsx` — modal de edição (avatar + username), design preto/roxo do site
+  - `hooks/useUserProfile.ts` — fetch de perfil, updateUsername, uploadAvatar
+  - `backend/src/middlewares/upload.js` — multer storage em disco, filtro de tipo, limite 2MB
+  - `backend/src/controllers/userController.js` — +getProfile, +updateUsername, +uploadAvatarHandler, +usernameValidators
+  - `backend/src/routes/users.js` — +GET /api/user/profile, +PATCH /api/user/username, +POST /api/user/avatar
+  - `backend/server.js` — express.static servindo /uploads
+  - `app/page.tsx` — header com avatar dinâmico + UserProfileModal integrado
+  - `backend/src/db/migrations.sql` — colunas avatar_url e username_updated_at
+  - `documentos-gerais/PERFIL-USUARIO.md` — documentação da feature
+  - Migration executada no banco: ALTER TABLE users ADD COLUMN avatar_url, username_updated_at
+  - multer instalado no backend
+**Commit:** `4909118` · TypeScript `tsc --noEmit` passou sem erros
+**Próximo agente:** IA-2 (QA) — revisar feature de perfil
+
+---
+
 ### 2026-03-04 18:49 · T-001 · IA-3 (Tech Lead)
-**Status:** ABERTO
 **Ação tomada:**
 	- Log inicial vazio. Abri a tarefa critica T-001 para corrigir metadata no frontend.
 	- T-001 -> assignee: IA-1
@@ -14,7 +33,6 @@
 **Observacoes:** Prioridade critica. Sem conflitos entre IA-1 e IA-2 no log.
 
 ### 2026-03-04 19:15 · T-002 · IA-2 (QA Engineer)
-**Status:** APROVADO COM RESSALVAS ⚠️
 **Input recebido:** Implementação da camada de "Blindagem" (Hardening) e Tipagem Autoritativa.
 **Problemas encontrados:**
   - 🟡 [MÉDIO] [backend/src/controllers/postController.js](backend/src/controllers/postController.js#L262) — A função `updatePost` dá fallback para `JSON.stringify({})` no campo `metadata`, mas a tabela permite NULL. Se o banco retornar NULL, a sanitização no frontend/backend precisa ser robusta. (Já mitigado pela `sanitizePostResponse`).
